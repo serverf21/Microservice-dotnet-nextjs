@@ -9,5 +9,12 @@ services:
     volumes:
       # helps docker in using our os storage to establish the DB
       - pgdata:/var/lib/postgresql/data
+  mongodb:
+    image: mongo
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodata:/var/lib/mongodb/data
 volumes:
   pgdata:
+  mongodata:
