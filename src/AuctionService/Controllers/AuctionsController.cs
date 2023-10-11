@@ -5,6 +5,7 @@ using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Contracts;
 using MassTransit;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -53,14 +54,15 @@ public class AuctionController : ControllerBase
 
         return _mapper.Map<AuctionDto>(auction);
     }
-
+    [Authorize]
     // post
     [HttpPost]
     public async Task<ActionResult<AuctionDto>> CreateAuction(CreateAuctionDto auctionDto)
     {
         var auction = _mapper.Map<Auction>(auctionDto);
         // TODO: add current user as seller
-        auction.Seller = "test";
+
+        auction.Seller = User.Identity.Name;
         _context.Auctions.Add(auction);
 
         var result = await _context.SaveChangesAsync() > 0;
@@ -71,6 +73,8 @@ public class AuctionController : ControllerBase
             new { auction.Id }, _mapper.Map<AuctionDto>(auction));
     }
 
+
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateAuction(Guid id, UpdateAuctionDto updateAuctionDto)
     {
@@ -79,6 +83,8 @@ public class AuctionController : ControllerBase
         if (auction == null) return NotFound();
 
         // TODO: Check seller == username
+        if (auction.Seller != User.Identity.Name) return Forbid();
+
         auction.Item.Make = updateAuctionDto.Make ?? auction.Item.Make;
         auction.Item.Model = updateAuctionDto.Model ?? auction.Item.Model;
         auction.Item.Color = updateAuctionDto.Color ?? auction.Item.Color;
@@ -94,6 +100,7 @@ public class AuctionController : ControllerBase
         return BadRequest("Problem saving changes!");
     }
 
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteAuction(Guid id)
     {
@@ -102,7 +109,7 @@ public class AuctionController : ControllerBase
         if (auction == null) return NotFound();
 
         // TODO: Check seller == username
-
+        if (auction.Seller != User.Identity.Name) return Forbid();
         _context.Auctions.Remove(auction);
 
         await _publishEndpoint.Publish<AuctionDeleted>(new { Id = auction.Id.ToString() });
